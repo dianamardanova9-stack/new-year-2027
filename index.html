@@ -159,6 +159,7 @@
 <script type="module">
     import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getFirestore, doc, onSnapshot, setDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
   /* ================= Firebase ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
@@ -168,9 +169,8 @@ const firebaseConfig = {
   messagingSenderId: "867830955172",
   appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
 };
-
 // Initialize Firebase
-let useFirebase = !firebaseConfig.apiKey.includes{
+let useFirebase = !firebaseConfig.apiKey.includes(const firebaseConfig = {
   apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
   authDomain: "new-year-27-c54e4.firebaseapp.com",
   projectId: "new-year-27-c54e4",
@@ -178,22 +178,20 @@ let useFirebase = !firebaseConfig.apiKey.includes{
   messagingSenderId: "867830955172",
   appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
 };
+);
 let db = null, docRef = null;
-if (useFirebase) {
-    try {
-      const app = initializeApp(firebaseConfig);
-        await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-      const app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
-      // офлайн-кэш Firestore
-      try { await enableIndexedDbPersistence(db); } catch (e) { console.warn('Firestore offline persistence:', e.code); }
-      docRef = doc(db, 'shopping', 'default');
-    } catch (e) {
-      console.warn('Firebase не подключён, работаем локально', e);
-      useFirebase = false;
-    }
-  }
 
+if (useFirebase) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    try { await enableIndexedDbPersistence(db); } catch (e) { console.warn('Firestore offline persistence:', e.code); }
+    docRef = doc(db, 'shopping', 'default');
+  } catch (e) {
+    console.warn('Firebase не подключён, работаем локально', e);
+    useFirebase = false;
+  }
+}
 /* ================= IndexedDB для фото ================= */
   const DB_NAME = 'shoppingDB', DB_VER = 1;
   let idb;
