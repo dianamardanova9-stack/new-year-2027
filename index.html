@@ -102,7 +102,7 @@
   #desktop-table .qty-row { padding-left: 0; margin-top: 0; }
   #desktop-table .progress { margin-left: 0; }
 
-  /* ===== модальное окно редактирования ===== */
+  /* ===== модальные окна ===== */
   .modal-overlay {
     position: fixed; inset: 0; background: rgba(0,0,0,.45);
     display: none; align-items: center; justify-content: center;
@@ -144,6 +144,29 @@
   .modal .modal-actions .save:active { background: #256428; }
   .modal .modal-actions .cancel { background: #e2e8f0; color: #333; }
   .modal .modal-actions .cancel:active { background: #ccd; }
+
+  /* категории */
+  .cat-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .cat-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px;
+    background: #fafbfc;
+  }
+  .cat-item .cat-name { flex: 1; font-size: 15px; }
+  .cat-item input { flex: 1; padding: 6px 8px; border: 1px solid #ccd; border-radius: 6px; font-size: 15px; }
+  .cat-item button {
+    border: none; background: none; cursor: pointer;
+    font-size: 16px; padding: 2px 4px; border-radius: 4px;
+  }
+  .cat-item .cat-edit { color: #1565c0; }
+  .cat-item .cat-del { color: #c33; }
+  .cat-item .cat-save { color: #2e7d32; }
+  .cat-item .cat-cancel { color: #889; }
+  .cat-add-row { display: flex; gap: 6px; margin-top: 12px; }
+  .cat-add-row input { flex: 1; padding: 10px 12px; border: 1px solid #ccd; border-radius: 10px; font-size: 15px; }
+  .cat-add-row button { padding: 10px 16px; border: none; border-radius: 10px; background: #2e7d32; color: #fff; font-size: 15px; cursor: pointer; }
+  .cat-add-row button:active { background: #256428; }
+  .cat-hint { font-size: 12px; color: #889; margin-top: 8px; }
 </style>
 </head>
 <body>
@@ -151,17 +174,13 @@
 <div class="status-bar">
   <h1 style="margin:0">🛒 Список покупок</h1>
   <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <button class="install-btn" id="catsBtn" style="display:inline-block;background:#6b7280">⚙️ Категории</button>
     <span class="offline-badge" id="netBadge">—</span>
     <button class="install-btn" id="installBtn">📲 Установить</button>
   </div>
 </div>
 
-<div class="tabs">
-  <button data-filter="all" class="active">Все</button>
-  <button data-filter="Продукты">Продукты</button>
-  <button data-filter="Хозтовары">Хозтовары</button>
-  <button data-filter="bought">Куплено</button>
-</div>
+<div class="tabs" id="tabs"></div>
 
 <div id="mobile-list"></div>
 
@@ -177,7 +196,7 @@
 <div class="empty" id="empty" style="display:none">Список пуст — добавьте товар 👇</div>
 <div id="usage"></div>
 
-<!-- окно редактирования -->
+<!-- окно редактирования товара -->
 <div class="modal-overlay" id="editModal">
   <div class="modal">
     <h2>✏️ Редактировать товар</h2>
@@ -185,11 +204,7 @@
     <input type="text" id="editName" />
 
     <label>Категория</label>
-    <select id="editCat">
-      <option value="Продукты">Продукты</option>
-      <option value="Хозтовары">Хозтовары</option>
-      <option value="Другое">Другое</option>
-    </select>
+    <select id="editCat"></select>
 
     <div class="row">
       <div>
@@ -221,16 +236,28 @@
   </div>
 </div>
 
+<!-- окно управления категориями -->
+<div class="modal-overlay" id="catsModal">
+  <div class="modal">
+    <h2>⚙️ Категории</h2>
+    <div class="cat-list" id="catList"></div>
+    <div class="cat-add-row">
+      <input type="text" id="newCatName" placeholder="Новая категория" />
+      <button id="addCatBtn">+ Добавить</button>
+    </div>
+    <div class="cat-hint">Переименование обновит название у всех товаров этой категории.</div>
+    <div class="modal-actions">
+      <button class="cancel" id="catsClose">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <div class="add-bar">
   <div class="row1">
     <input type="text" id="name" placeholder="Название товара" />
   </div>
   <div class="row1">
-    <select id="cat" style="flex:1">
-      <option value="Продукты">Продукты</option>
-      <option value="Хозтовары">Хозтовары</option>
-      <option value="Другое">Другое</option>
-    </select>
+    <select id="cat" style="flex:1"></select>
     <input type="number" id="price" placeholder="Цена" style="width:80px" />
     <input type="number" id="need" placeholder="Кол-во" min="1" value="1" style="width:70px" />
   </div>
@@ -245,11 +272,10 @@
 </div>
 
 <script type="module">
-/* ================= Firebase: импорты в начале ================= */
+/* ================= Firebase ================= */
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js';
 import { getFirestore, doc, onSnapshot, setDoc, enableIndexedDbPersistence } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
-/* ================= Firebase: конфиг ================= */
 const firebaseConfig = {
   apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
   authDomain: "new-year-27-c54e4.firebaseapp.com",
@@ -323,16 +349,146 @@ async function getPhotoURL(id) {
 
 /* ================= состояние ================= */
 let items = [];
+let categories = ['Продукты', 'Хозтовары', 'Другое'];
 let filter = 'all';
 let pendingPhotos = [];
 const $ = id => document.getElementById(id);
 
 async function persist() {
   localStorage.setItem('shopping_items', JSON.stringify(items));
+  localStorage.setItem('shopping_categories', JSON.stringify(categories));
   if (useFirebase && docRef) {
-    try { await setDoc(docRef, { items }); } catch (e) { console.warn('Firebase save error', e); }
+    try { await setDoc(docRef, { items, categories }); } catch (e) { console.warn('Firebase save error', e); }
   }
 }
+
+/* ================= категории: интерфейс ================= */
+function renderTabs() {
+  const tabs = $('tabs');
+  tabs.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.textContent = 'Все';
+  allBtn.dataset.filter = 'all';
+  allBtn.className = filter === 'all' ? 'active' : '';
+  allBtn.onclick = () => { filter = 'all'; renderTabs(); render(); };
+  tabs.appendChild(allBtn);
+
+  categories.forEach(c => {
+    const b = document.createElement('button');
+    b.textContent = c;
+    b.dataset.filter = c;
+    b.className = filter === c ? 'active' : '';
+    b.onclick = () => { filter = c; renderTabs(); render(); };
+    tabs.appendChild(b);
+  });
+
+  const boughtBtn = document.createElement('button');
+  boughtBtn.textContent = 'Куплено';
+  boughtBtn.dataset.filter = 'bought';
+  boughtBtn.className = filter === 'bought' ? 'active' : '';
+  boughtBtn.onclick = () => { filter = 'bought'; renderTabs(); render(); };
+  tabs.appendChild(boughtBtn);
+}
+
+function fillCategorySelects() {
+  const fill = (sel, current) => {
+    sel.innerHTML = '';
+    categories.forEach(c => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      sel.appendChild(o);
+    });
+    if (current && categories.includes(current)) sel.value = current;
+  };
+  fill($('cat'), $('cat').value);
+  fill($('editCat'), $('editCat').value);
+}
+
+async function renderCatList() {
+  const box = $('catList');
+  box.innerHTML = '';
+  categories.forEach((c, idx) => {
+    const row = document.createElement('div');
+    row.className = 'cat-item';
+    const span = document.createElement('span');
+    span.className = 'cat-name';
+    span.textContent = c;
+    row.appendChild(span);
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'cat-edit'; editBtn.textContent = '✏️';
+    editBtn.onclick = () => startRenameCat(idx, row, c);
+    row.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'cat-del'; delBtn.textContent = '✕';
+    delBtn.onclick = async () => {
+      if (categories.length <= 1) { alert('Должна остаться хотя бы одна категория'); return; }
+      const used = items.filter(it => it.cat === c).length;
+      const msg = used
+        ? `Удалить категорию «${c}»? В ней ${used} товаров — они перейдут в «${categories.find(x => x !== c)}».`
+        : `Удалить категорию «${c}»?`;
+      if (!confirm(msg)) return;
+      const fallback = categories.find(x => x !== c);
+      items.forEach(it => { if (it.cat === c) it.cat = fallback; });
+      categories = categories.filter(x => x !== c);
+      if (filter === c) filter = 'all';
+      await persist();
+      await renderCatList();
+      fillCategorySelects();
+      renderTabs();
+      render();
+    };
+    row.appendChild(delBtn);
+    box.appendChild(row);
+  });
+}
+
+function startRenameCat(idx, row, oldName) {
+  row.innerHTML = '';
+  const input = document.createElement('input');
+  input.type = 'text'; input.value = oldName;
+  row.appendChild(input);
+
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'cat-save'; saveBtn.textContent = '✓';
+  saveBtn.onclick = async () => {
+    const newName = input.value.trim();
+    if (!newName || newName === oldName) { await renderCatList(); return; }
+    if (categories.includes(newName)) { alert('Такая категория уже есть'); return; }
+    categories[idx] = newName;
+    items.forEach(it => { if (it.cat === oldName) it.cat = newName; });
+    if (filter === oldName) filter = newName;
+    await persist();
+    await renderCatList();
+    fillCategorySelects();
+    renderTabs();
+    render();
+  };
+  row.appendChild(saveBtn);
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'cat-cancel'; cancelBtn.textContent = '✕';
+  cancelBtn.onclick = () => renderCatList();
+  row.appendChild(cancelBtn);
+}
+
+$('catsBtn').onclick = async () => {
+  await renderCatList();
+  $('catsModal').classList.add('open');
+};
+$('catsClose').onclick = () => $('catsModal').classList.remove('open');
+$('addCatBtn').onclick = async () => {
+  const name = $('newCatName').value.trim();
+  if (!name) return;
+  if (categories.includes(name)) { alert('Такая категория уже есть'); return; }
+  categories.push(name);
+  $('newCatName').value = '';
+  await persist();
+  await renderCatList();
+  fillCategorySelects();
+  renderTabs();
+};
 
 /* ================= фото из формы ================= */
 async function addFiles(files) {
@@ -453,7 +609,7 @@ async function addPhotoBtn(it) {
   return wrap;
 }
 
-/* ================= редактирование ================= */
+/* ================= редактирование товара ================= */
 let editingItem = null;
 let editPendingPhotos = [];
 
@@ -461,10 +617,11 @@ async function openEdit(it) {
   editingItem = it;
   editPendingPhotos = [];
   $('editName').value = it.name;
-  $('editCat').value = it.cat;
   $('editPrice').value = it.price || '';
   $('editNeed').value = it.need;
   $('editBought').value = it.bought;
+  fillCategorySelects();
+  $('editCat').value = it.cat;
   await renderEditPhotos();
   $('editModal').classList.add('open');
 }
@@ -520,7 +677,6 @@ $('editCancel').onclick = () => {
   editingItem = null;
   editPendingPhotos = [];
 };
-
 $('editSave').onclick = async () => {
   if (!editingItem) return;
   const name = $('editName').value.trim();
@@ -627,7 +783,8 @@ async function render() {
 
     const tdImg = document.createElement('td');
     tdImg.appendChild(await buildGallery(it));
-const tdName = document.createElement('td');
+
+    const tdName = document.createElement('td');
     tdName.innerHTML = `<div class="name">${escapeHtml(it.name)}</div>
       <div style="font-size:12px;color:#889">${escapeHtml(it.cat)}</div>`;
 
@@ -687,7 +844,7 @@ $('addBtn').onclick = async () => {
   for (const p of pendingPhotos) photoIds.push(await storePhoto(p.blob));
   items.push({
     id: Date.now() + Math.random(),
-    name, cat: $('cat').value,
+    name, cat: $('cat').value || categories[0],
     price: $('price').value ? Number($('price').value) : null,
     need: Math.max(1, Number($('need').value) || 1),
     bought: 0, photos: photoIds
@@ -697,13 +854,6 @@ $('addBtn').onclick = async () => {
   pendingPhotos = []; renderPreviews(); render();
 };
 $('name').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
-document.querySelectorAll('.tabs button').forEach(b => {
-  b.onclick = () => {
-    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    filter = b.dataset.filter; render();
-  };
-});
 
 /* ================= индикатор сети ================= */
 function updateNet() {
@@ -734,17 +884,26 @@ $('installBtn').onclick = async () => {
 (async function init() {
   await openIDB();
   try {
-    const saved = JSON.parse(localStorage.getItem('shopping_items') || '[]');
-    if (Array.isArray(saved)) items = saved;
+    const saved = localStorage.getItem('shopping_items');
+    if (saved) items = JSON.parse(saved);
+    const savedCats = localStorage.getItem('shopping_categories');
+    if (savedCats) {
+      const parsed = JSON.parse(savedCats);
+      if (Array.isArray(parsed) && parsed.length) categories = parsed;
+    }
   } catch (e) {}
 
   if (useFirebase && docRef) {
     onSnapshot(docRef, snap => {
-      if (snap.exists() && Array.isArray(snap.data().items)) {
-        items = snap.data().items;
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.items)) items = data.items;
+        if (Array.isArray(data.categories) && data.categories.length) categories = data.categories;
+        renderTabs();
+        fillCategorySelects();
         render();
       } else {
-        setDoc(docRef, { items });
+        setDoc(docRef, { items, categories });
       }
     }, err => console.warn('snapshot error', err));
   }
@@ -760,6 +919,8 @@ $('installBtn').onclick = async () => {
     } catch (e) { console.warn('SW ошибка:', e); }
   }
 
+  renderTabs();
+  fillCategorySelects();
   updateNet();
   renderPreviews();
   render();
