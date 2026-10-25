@@ -1,11 +1,9 @@
 const CACHE_NAME = 'shopping-v1';
 const ASSETS = [
   './',
-  './index.html',
-  './manifest.json'
+  './index.html'
 ];
 
-// Установка — кэшируем основные файлы
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME)
@@ -14,7 +12,6 @@ self.addEventListener('install', e => {
   );
 });
 
-// Активация — удаляем старые кэши
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -23,13 +20,12 @@ self.addEventListener('activate', e => {
   );
 });
 
-// ⚠️ ВАЖНО: обработчик fetch обязателен для установки как приложение
+// Обработчик fetch обязателен для установки PWA
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
 
-  // Firebase SDK и Firestore — сеть, с fallback на кэш
   if (url.hostname === 'www.gstatic.com' || url.hostname === 'firestore.googleapis.com') {
     e.respondWith(
       caches.open(CACHE_NAME).then(cache =>
@@ -44,7 +40,6 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Наш HTML и прочее — сеть, с fallback на кэш
   e.respondWith(
     fetch(e.request)
       .then(resp => {
