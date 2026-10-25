@@ -170,15 +170,7 @@ const firebaseConfig = {
   appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
 };
 // Initialize Firebase
-let useFirebase = !firebaseConfig.apiKey.includes const firebaseConfig = {
-  apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
-  authDomain: "new-year-27-c54e4.firebaseapp.com",
-  projectId: "new-year-27-c54e4",
-  storageBucket: "new-year-27-c54e4.firebasestorage.app",
-  messagingSenderId: "867830955172",
-  appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
-};
-);
+let useFirebase = !firebaseConfig.apiKey.includes("ВСТАВЬТЕ");
 let db = null, docRef = null;
 
 if (useFirebase) {
