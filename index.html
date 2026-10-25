@@ -539,7 +539,146 @@ async function updateUsage() {
     deferredPrompt = null;
     $('installBtn').style.display = 'none';
   };
+/* ===== модальное окно редактирования ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center;
+  z-index: 100; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: #fff; border-radius: 14px; padding: 18px;
+  width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+}
+.modal h2 { margin: 0 0 14px; font-size: 18px; }
+.modal label { display: block; font-size: 13px; color: #667; margin: 10px 0 4px; }
+.modal input[type="text"],
+.modal input[type="number"],
+.modal select {
+  width: 100%; padding: 10px 12px; border: 1px solid #ccd;
+  border-radius: 10px; font-size: 15px;
+}
+.modal .row { display: flex; gap: 8px; }
+.modal .row > div { flex: 1; }
+.modal .photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.modal .photos .thumb-wrap .thumb { width: 56px; height: 56px; }
+.modal .photo-actions { display: flex; gap: 8px; margin-top: 8px; }
+.modal .photo-actions label {
+  flex: 1; text-align: center; padding: 8px;
+  border: 1px dashed #99b; border-radius: 8px; font-size: 13px;
+  color: #556; background: #fafbff; cursor: pointer; margin: 0;
+}
+.modal .photo-actions input[type="file"] { display: none; }
+.modal .modal-actions {
+  display: flex; gap: 8px; margin-top: 18px;
+}
+.modal .modal-actions button {
+  flex: 1; padding: 12px; border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.modal .modal-actions .save { background: #2e7d32; color: #fff; }
+.modal .modal-actions .save:active { background: #256428; }
+.modal .modal-actions .cancel { background: #e2e8f0; color: #333; }
+.modal .modal-actions .cancel:active { background: #ccd; }
 
+/* кнопка-карандаш в карточке */
+.edit {
+  background: none; border: none; color: #1565c0;
+  font-size: 18px; padding: 0 4px; cursor: pointer; flex-shrink: 0;
+}
+/* ================= редактирование ================= */
+let editingItem = null;
+let editPendingPhotos = [];
+
+async function openEdit(it) {
+  editingItem = it;
+  editPendingPhotos = [];
+  $('editName').value = it.name;
+  $('editCat').value = it.cat;
+  $('editPrice').value = it.price || '';
+  $('editNeed').value = it.need;
+  $('editBought').value = it.bought;
+  await renderEditPhotos();
+  $('editModal').classList.add('open');
+}
+
+async function renderEditPhotos() {
+  const box = $('editPhotos');
+  box.innerHTML = '';
+  const all = [...(editingItem.photos || [])];
+  for (let idx = 0; idx < all.length; idx++) {
+    const pid = all[idx];
+    const url = await getPhotoURL(pid);
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-wrap';
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    if (url) img.src = url;
+    const del = document.createElement('button');
+    del.className = 'thumb-del'; del.textContent = '✕';
+    del.onclick = () => {
+      editingItem.photos.splice(editingItem.photos.indexOf(pid), 1);
+      renderEditPhotos();
+    };
+    wrap.append(img, del);
+    box.appendChild(wrap);
+  }
+  editPendingPhotos.forEach((p, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-wrap';
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.src = URL.createObjectURL(p.blob);
+    img.onload = () => URL.revokeObjectURL(img.src);
+    const del = document.createElement('button');
+    del.className = 'thumb-del'; del.textContent = '✕';
+    del.onclick = () => { editPendingPhotos.splice(i, 1); renderEditPhotos(); };
+    wrap.append(img, del);
+    box.appendChild(wrap);
+  });
+}
+
+function addEditFiles(files) {
+  for (const f of files) {
+    editPendingPhotos.push({ blob: f });
+  }
+  renderEditPhotos();
+}
+$('editFileCamera').addEventListener('change', e => { addEditFiles([...e.target.files]); e.target.value = ''; });
+$('editFileGallery').addEventListener('change', e => { addEditFiles([...e.target.files]); e.target.value = ''; });
+
+$('editCancel').onclick = () => {
+  $('editModal').classList.remove('open');
+  editingItem = null;
+  editPendingPhotos = [];
+};
+
+$('editSave').onclick = async () => {
+  if (!editingItem) return;
+  const name = $('editName').value.trim();
+  if (!name) { $('editName').focus(); return; }
+
+  // добавляем новые фото
+  for (const p of editPendingPhotos) {
+    const id = await storePhoto(p.blob);
+    if (!editingItem.photos) editingItem.photos = [];
+    editingItem.photos.push(id);
+  }
+
+  editingItem.name = name;
+  editingItem.cat = $('editCat').value;
+  editingItem.price = $('editPrice').value ? Number($('editPrice').value) : null;
+  editingItem.need = Math.max(1, Number($('editNeed').value) || 1);
+  editingItem.bought = Math.max(0, Number($('editBought').value) || 0);
+  if (editingItem.bought > editingItem.need) editingItem.bought = editingItem.need;
+
+  await persist();
+  $('editModal').classList.remove('open');
+  editingItem = null;
+  editPendingPhotos = [];
+  render();
+};
 /* ================= запуск ================= */
   (async function init() {
     await openIDB();
