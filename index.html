@@ -170,7 +170,7 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-let useFirebase = !firebaseConfig.apiKey.includesconst firebaseConfig = {
+let useFirebase = !firebaseConfig.apiKey.includes{
   apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
   authDomain: "new-year-27-c54e4.firebaseapp.com",
   projectId: "new-year-27-c54e4",
@@ -179,9 +179,9 @@ let useFirebase = !firebaseConfig.apiKey.includesconst firebaseConfig = {
   appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
 };
 let db = null, docRef = null;
-const app = initializeApp(firebaseConfig);
 if (useFirebase) {
     try {
+      const app = initializeApp(firebaseConfig);
         await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
       const app = initializeApp(firebaseConfig);
       db = getFirestore(app);
