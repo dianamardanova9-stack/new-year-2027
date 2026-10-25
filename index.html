@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Список покупок</title>
+<meta name="theme-color" content="#2e7d32">
+<link rel="manifest" href="manifest.json">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0; padding: 12px; padding-bottom: 140px;
+    background: #f4f6f8; color: #222; font-size: 15px;
+  }
+  h1 { font-size: 20px; margin: 0 0 12px; }
+  .tabs {
+    display: flex; gap: 6px; margin-bottom: 12px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 2px;
+  }
+  .tabs button {
+    padding: 7px 14px; border: none; border-radius: 20px;
+    background: #e2e8f0; color: #333; font-size: 14px;
+    white-space: nowrap; cursor: pointer; flex-shrink: 0;
+  }
+  .tabs button.active { background: #2e7d32; color: #fff; }
+  .card-item {
+    background: #fff; border-radius: 12px; padding: 12px;
+    margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,.07);
+  }
+  .card-item.done .name { text-decoration: line-through; color: #999; }
+  .card-item.done .gallery { opacity: .4; }
+  .card-top { display: flex; align-items: flex-start; gap: 10px; }
+  .check { width: 26px; height: 26px; cursor: pointer; accent-color: #2e7d32; flex-shrink: 0; margin-top: 2px; }
+  .info { flex: 1; min-width: 0; }
+  .name { font-weight: 600; font-size: 16px; word-break: break-word; }
+  .meta { font-size: 12px; color: #889; margin-top: 2px; }
+  .del { background: none; border: none; color: #c33; font-size: 20px; padding: 0 4px; cursor: pointer; flex-shrink: 0; }
+  .gallery { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; padding-left: 36px; }
+  .thumb-wrap { position: relative; }
+  .thumb { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; background: #eef; display: block; cursor: pointer; }
+  .thumb-empty { width: 52px; height: 52px; border-radius: 8px; background: #eef; display: flex; align-items: center; justify-content: center; font-size: 24px; color: #aab; }
+  .thumb-del { position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%; background: #c33; color: #fff; font-size: 12px; line-height: 20px; text-align: center; cursor: pointer; border: none; padding: 0; }
+  .qty-row { display: flex; gap: 12px; margin-top: 10px; padding-left: 36px; flex-wrap: wrap; }
+  .qty-block { display: flex; align-items: center; gap: 4px; }
+  .qty-block .label { font-size: 12px; color: #889; margin-right: 2px; }
+  .qty button { width: 30px; height: 30px; padding: 0; font-size: 18px; background: #e2e8f0; color: #333; border: none; border-radius: 6px; cursor: pointer; }
+  .qty button:active { background: #ccd; }
+  .qty .num { min-width: 22px; text-align: center; font-weight: 700; font-size: 16px; }
+  .qty .num.bought { color: #2e7d32; }
+  .qty .num.over { color: #c33; }
+  .progress { height: 4px; background: #e2e8f0; border-radius: 2px; overflow: hidden; margin-top: 8px; margin-left: 36px; }
+  .progress > div { height: 100%; background: #2e7d32; }
+  .card-actions { margin-top: 8px; padding-left: 36px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .card-actions label { font-size: 12px; padding: 5px 10px; border: 1px dashed #99b; border-radius: 8px; cursor: pointer; color: #556; background: #fafbff; }
+  .card-actions label:active { background: #eef; }
+  .card-actions input[type="file"] { display: none; }
+  .empty { text-align: center; color: #99a; padding: 40px 16px; }
+  .add-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; padding: 10px 12px; box-shadow: 0 -2px 12px rgba(0,0,0,.1); z-index: 10; }
+  .add-bar .row1 { display: flex; gap: 6px; margin-bottom: 6px; }
+  .add-bar input[type="text"] { flex: 1; padding: 10px 12px; border: 1px solid #ccd; border-radius: 10px; font-size: 16px; min-width: 0; }
+  .add-bar select, .add-bar input[type="number"] { padding: 8px; border: 1px solid #ccd; border-radius: 8px; font-size: 14px; background: #fff; }
+  .add-bar .row2 { display: flex; gap: 6px; align-items: center; }
+  .add-bar .row2 .file-btn { flex: 1; text-align: center; padding: 9px 6px; border: 1px dashed #99b; border-radius: 8px; font-size: 13px; color: #556; cursor: pointer; background: #fafbff; white-space: nowrap; }
+  .add-bar .row2 .file-btn:active { background: #eef; }
+  .add-bar .row2 input[type="file"] { display: none; }
+  .add-bar button.add { padding: 10px 18px; border: none; border-radius: 10px; background: #2e7d32; color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .add-bar button.add:active { background: #256428; }
+  #previews { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  #previews .thumb-wrap .thumb, #previews .thumb-empty { width: 38px; height: 38px; }
+  #usage { font-size: 11px; color: #99a; text-align: center; margin-top: 6px; }
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 8px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .install-btn {
+    padding: 7px 12px; border: none; border-radius: 8px;
+    background: #1565c0; color: #fff; font-size: 13px; cursor: pointer;
+    display: none;
+  }
+  .offline-badge {
+    font-size: 12px; padding: 4px 10px; border-radius: 12px;
+    background: #ffebee; color: #c62828;
+  }
+  .offline-badge.online { background: #e8f5e9; color: #2e7d32; }
+  @media (min-width: 701px) {
+    body { padding-bottom: 20px; max-width: 900px; margin: 0 auto; }
+    .add-bar { position: static; box-shadow: none; padding: 0; background: transparent; margin-bottom: 16px; }
+    .add-bar .row1 { flex-wrap: wrap; }
+    .add-bar .row2 { flex-wrap: wrap; }
+    .add-bar .row2 .file-btn { flex: none; }
+    .card-item { display: none; }
+    #desktop-table { display: block; }
+  }
+  @media (max-width: 700px) { #desktop-table { display: none; } }
+  #desktop-table table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+  #desktop-table th, #desktop-table td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; vertical-align: middle; }
+  #desktop-table th { font-size: 12px; color: #667; text-transform: uppercase; background: #fafbfc; }
+  #desktop-table tr.done .name { text-decoration: line-through; color: #999; }
+  #desktop-table .gallery { padding-left: 0; margin-top: 0; }
+  #desktop-table .qty-row { padding-left: 0; margin-top: 0; }
+  #desktop-table .progress { margin-left: 0; }
+</style>
+</head>
+<body>
+
+<div class="status-bar">
+  <h1 style="margin:0">🛒 Список покупок</h1>
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <span class="offline-badge" id="netBadge">—</span>
+    <button class="install-btn" id="installBtn">📲 Установить</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <button data-filter="all" class="active">Все</button>
+  <button data-filter="Продукты">Продукты</button>
+  <button data-filter="Хозтовары">Хозтовары</button>
+  <button data-filter="bought">Куплено</button>
+</div>
+
+<div id="mobile-list"></div>
+
+<div id="desktop-table">
+  <table>
+    <thead>
+      <tr><th></th><th>Фото</th><th>Товар</th><th>Цена</th><th>Купить</th><th>Куплено</th><th></th></tr>
+    </thead>
+    <tbody id="desktop-tbody"></tbody>
+  </table>
+</div>
+
+<div class="empty" id="empty" style="display:none">Список пуст — добавьте товар 👇</div>
+<div id="usage"></div>
+
+<div class="add-bar">
+  <div class="row1">
+    <input type="text" id="name" placeholder="Название товара" />
+  </div>
+  <div class="row1">
+    <select id="cat" style="flex:1">
+      <option value="Продукты">Продукты</option>
+      <option value="Хозтовары">Хозтовары</option>
+      <option value="Другое">Другое</option>
+    </select>
+    <input type="number" id="price" placeholder="Цена" style="width:80px" />
+    <input type="number" id="need" placeholder="Кол-во" min="1" value="1" style="width:70px" />
+  </div>
+  <div class="row2">
+    <label class="file-btn" for="file-camera">📷 Снять</label>
+    <input type="file" id="file-camera" accept="image/*" capture="environment" />
+    <label class="file-btn" for="file-gallery">🖼 Галерея</label>
+    <input type="file" id="file-gallery" accept="image/*" multiple />
+    <button class="add" id="addBtn">Добавить</button>
+  </div>
+  <div id="previews"></div>
+</div>
+
+<script type="module">
+/* ================= Firebase ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBNqASXGgtdos5XWvFCOwmXqJf7pfMSCGs",
+  authDomain: "new-year-27-c54e4.firebaseapp.com",
+  projectId: "new-year-27-c54e4",
+  storageBucket: "new-year-27-c54e4.firebasestorage.app",
+  messagingSenderId: "867830955172",
+  appId: "1:867830955172:web:2ba3e9e0cd8f2c76ca7a31"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+
+let useFirebase = !firebaseConfig.apiKey.includes("ВСТАВЬТЕ");
+let db = null, docRef = null;
+
+if (useFirebase) {
+  try {
+    const { initializeApp } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
+    const { getFirestore, doc, onSnapshot, setDoc, enableIndexedDbPersistence } =
+      await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    // офлайн-кэш Firestore
+    try { await enableIndexedDbPersistence(db); } catch (e) { console.warn('Firestore offline persistence:', e.code); }
+    docRef = doc(db, 'shopping', 'default');
+  } catch (e) {
+    console.warn('Firebase не подключён, работаем локально', e);
+    useFirebase = false;
+  }
+}
+
+/* ================= IndexedDB для фото ================= */
+const DB_NAME = 'shoppingDB', DB_VER = 1;
+let idb;
+function openIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+      if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos');
+    };
+    req.onsuccess = e => { idb = e.target.result; resolve(); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+function idbGet(store, key) {
+  return new Promise((res, rej) => {
+    const r = idb.transaction(store).objectStore(store).get(key);
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+function idbPut(store, val, key) {
+  return new Promise((res, rej) => {
+    const r = idb.transaction(store, 'readwrite').objectStore(store).put(val, key);
+    r.onsuccess = () => res(); r.onerror = () => rej(r.error);
+  });
+}
+function idbDel(store, key) {
+  return new Promise((res, rej) => {
+    const r = idb.transaction(store, 'readwrite').objectStore(store).delete(key);
+    r.onsuccess = () => res(); r.onerror = () => rej(r.error);
+  });
+}
+async function storePhoto(file) {
+  const id = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+  await idbPut('photos', { blob: file }, id);
+  return id;
+}
+const urlCache = new Map();
+async function getPhotoURL(id) {
+  if (urlCache.has(id)) return urlCache.get(id);
+  const rec = await idbGet('photos', id);
+  if (!rec) return null;
+  const url = URL.createObjectURL(rec.blob);
+  urlCache.set(id, url);
+  return url;
+}
+
+/* ================= состояние ================= */
+let items = [];
+let filter = 'all';
+let pendingPhotos = [];
+const $ = id => document.getElementById(id);
+
+async function persist() {
+  localStorage.setItem('shopping_items', JSON.stringify(items));
+  if (useFirebase && docRef) {
+    try { await setDoc(docRef, { items }); } catch (e) { console.warn('Firebase save error', e); }
+  }
+}
+
+/* ================= фото из формы ================= */
+async function addFiles(files) {
+  for (const f of files) {
+    pendingPhotos.push({ id: 'tmp_' + Date.now() + '_' + Math.random().toString(36).slice(2), blob: f });
+  }
+  renderPreviews();
+}
+$('file-camera').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+$('file-gallery').addEventListener('change', e => { addFiles([...e.target.files]); e.target.value = ''; });
+
+function renderPreviews() {
+  const box = $('previews');
+  box.innerHTML = '';
+  pendingPhotos.forEach((p, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'thumb-wrap';
+    const img = document.createElement('img');
+    img.className = 'thumb';
+    img.src = URL.createObjectURL(p.blob);
+    img.onload = () => URL.revokeObjectURL(img.src);
+    const del = document.createElement('button');
+    del.className = 'thumb-del'; del.textContent = '✕';
+    del.onclick = () => { pendingPhotos.splice(i, 1); renderPreviews(); };
+    wrap.append(img, del);
+    box.appendChild(wrap);
+  });
+}
+
+/* ================= количество ================= */
+function qtyControl(it, field) {
+  const wrap = document.createElement('div');
+  wrap.className = 'qty';
+  const minus = document.createElement('button'); minus.textContent = '−';
+  minus.onclick = () => {
+    if (field === 'need') { it.need = Math.max(1, it.need - 1); if (it.bought > it.need) it.bought = it.need; }
+    else { it.bought = Math.max(0, it.bought - 1); }
+    persist(); render();
+  };
+  const num = document.createElement('span'); num.className = 'num';
+  if (field === 'bought') {
+    if (it.bought > it.need) num.classList.add('over');
+    else if (it.need > 0 && it.bought === it.need) num.classList.add('bought');
+  }
+  num.textContent = it[field];
+  const plus = document.createElement('button'); plus.textContent = '+';
+  plus.onclick = () => {
+    it[field]++;
+    if (field === 'need' && it.bought > it.need) it.bought = it.need;
+    persist(); render();
+  };
+  wrap.append(minus, num, plus);
+  return wrap;
+}
+function progressBar(it) {
+  const prog = document.createElement('div');
+  prog.className = 'progress';
+  const pct = it.need > 0 ? Math.min(100, Math.round(it.bought / it.need * 100)) : 0;
+  prog.innerHTML = `<div style="width:${pct}%"></div>`;
+  return prog;
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ================= галерея ================= */
+async function buildGallery(it) {
+  const gal = document.createElement('div');
+  gal.className = 'gallery';
+  if (it.photos && it.photos.length) {
+    for (let idx = 0; idx < it.photos.length; idx++) {
+      const pid = it.photos[idx];
+      const url = await getPhotoURL(pid);
+      const wrap = document.createElement('div');
+      wrap.className = 'thumb-wrap';
+      const img = document.createElement('img');
+      img.className = 'thumb';
+      if (url) img.src = url;
+      img.onclick = () => { if (url) window.open(url, '_blank'); };
+      const del = document.createElement('button');
+      del.className = 'thumb-del'; del.textContent = '✕';
+      del.onclick = async ev => {
+        ev.stopPropagation();
+        it.photos.splice(idx, 1);
+        await idbDel('photos', pid);
+        urlCache.delete(pid);
+        await persist(); render();
+      };
+      wrap.append(img, del);
+      gal.appendChild(wrap);
+    }
+  } else {
+    const d = document.createElement('div');
+    d.className = 'thumb-empty';
+    d.textContent = it.cat === 'Продукты' ? '🍎' : '🧴';
+    gal.appendChild(d);
+  }
+  return gal;
+}
+async function addPhotoBtn(it) {
+  const wrap = document.createElement('span');
+  const label = document.createElement('label');
+  label.textContent = '📷 +фото';
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.multiple = true;
+  input.onchange = async e => {
+    const files = [...e.target.files]; e.target.value = '';
+    for (const f of files) {
+      const id = await storePhoto(f);
+      if (!it.photos) it.photos = [];
+      it.photos.push(id);
+    }
+    await persist(); render();
+  };
+  label.appendChild(input);
+  wrap.appendChild(label);
+  return wrap;
+}
+
+/* ================= рендер ================= */
+async function render() {
+  const shown = items.filter(it => {
+    if (filter === 'all') return true;
+    if (filter === 'bought') return it.need > 0 && it.bought >= it.need;
+    return it.cat === filter;
+  });
+  $('empty').style.display = shown.length ? 'none' : 'block';
+
+  const mobile = $('mobile-list');
+  mobile.innerHTML = '';
+  for (const it of shown) {
+    const card = document.createElement('div');
+    card.className = 'card-item';
+    const fully = it.need > 0 && it.bought >= it.need;
+    if (fully) card.classList.add('done');
+
+    const top = document.createElement('div');
+    top.className = 'card-top';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.className = 'check'; cb.checked = fully;
+    cb.onchange = () => { it.bought = cb.checked ? it.need : 0; persist(); render(); };
+
+    const info = document.createElement('div');
+    info.className = 'info';
+    info.innerHTML = `<div class="name">${escapeHtml(it.name)}</div>
+      <div class="meta">${escapeHtml(it.cat)}${it.price ? ' · ' + it.price + ' ₽' : ''}</div>`;
+
+    const del = document.createElement('button');
+    del.className = 'del'; del.textContent = '✕';
+    del.onclick = async () => {
+      if (!confirm('Удалить «' + it.name + '»?')) return;
+      if (it.photos) for (const pid of it.photos) { await idbDel('photos', pid); urlCache.delete(pid); }
+      items = items.filter(x => x.id !== it.id);
+      await persist(); render();
+    };
+
+    top.append(cb, info, del);
+    card.appendChild(top);
+    card.appendChild(await buildGallery(it));
+
+    const qtyRow = document.createElement('div');
+    qtyRow.className = 'qty-row';
+    const needBlock = document.createElement('div');
+    needBlock.className = 'qty-block';
+    needBlock.innerHTML = '<span class="label">Купить:</span>';
+    needBlock.appendChild(qtyControl(it, 'need'));
+    const boughtBlock = document.createElement('div');
+    boughtBlock.className = 'qty-block';
+    boughtBlock.innerHTML = '<span class="label">Куплено:</span>';
+    boughtBlock.appendChild(qtyControl(it, 'bought'));
+    qtyRow.append(needBlock, boughtBlock);
+    card.appendChild(qtyRow);
+    card.appendChild(progressBar(it));
+
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    actions.appendChild(await addPhotoBtn(it));
+    card.appendChild(actions);
+    mobile.appendChild(card);
+  }
+
+  const tbody = $('desktop-tbody');
+  tbody.innerHTML = '';
+  for (const it of shown) {
+    const tr = document.createElement('tr');
+    const fully = it.need > 0 && it.bought >= it.need;
+    if (fully) tr.className = 'done';
+
+    const tdCheck = document.createElement('td');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.className = 'check'; cb.checked = fully;
+    cb.onchange = () => { it.bought = cb.checked ? it.need : 0; persist(); render(); };
+    tdCheck.appendChild(cb);
+
+    const tdImg = document.createElement('td');
+    tdImg.appendChild(await buildGallery(it));
+
+    const tdName = document.createElement('td');
+    tdName.innerHTML = `<div class="name">${escapeHtml(it.name)}</div>
+      <div style="font-size:12px;color:#889">${escapeHtml(it.cat)}</div>`;
+
+    const tdPrice = document.createElement('td');
+    tdPrice.textContent = it.price ? it.price + ' ₽' : '—';
+
+    const tdNeed = document.createElement('td');
+    tdNeed.appendChild(qtyControl(it, 'need'));
+
+    const tdBought = document.createElement('td');
+    tdBought.appendChild(qtyControl(it, 'bought'));
+    tdBought.appendChild(progressBar(it));
+    tdBought.appendChild(await addPhotoBtn(it));
+
+    const tdDel = document.createElement('td');
+    const del = document.createElement('button');
+    del.className = 'del'; del.textContent = '✕';
+    del.onclick = async () => {
+      if (!confirm('Удалить «' + it.name + '»?')) return;
+      if (it.photos) for (const pid of it.photos) { await idbDel('photos', pid); urlCache.delete(pid); }
+      items = items.filter(x => x.id !== it.id);
+      await persist(); render();
+    };
+    tdDel.appendChild(del);
+
+    tr.append(tdCheck, tdImg, tdName, tdPrice, tdNeed, tdBought, tdDel);
+    tbody.appendChild(tr);
+  }
+  updateUsage();
+}
+
+async function updateUsage() {
+  try {
+    const all = await new Promise((res, rej) => {
+      const r = idb.transaction('photos').objectStore('photos').getAll();
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    });
+    let bytes = 0;
+    all.forEach(x => { if (x && x.blob) bytes += x.blob.size; });
+    const mb = (bytes / 1048576).toFixed(1);
+    $('usage').textContent = `Фото: ${all.length} шт · ${mb} МБ · ` +
+      (useFirebase ? '☁️ облако' : '💾 локально') +
+      (navigator.onLine ? '' : ' · офлайн');
+  } catch (e) {}
+}
+
+/* ================= добавление ================= */
+$('addBtn').onclick = async () => {
+  const name = $('name').value.trim();
+  if (!name) { $('name').focus(); return; }
+  const photoIds = [];
+  for (const p of pendingPhotos) photoIds.push(await storePhoto(p.blob));
+  items.push({
+    id: Date.now() + Math.random(),
+    name, cat: $('cat').value,
+    price: $('price').value ? Number($('price').value) : null,
+    need: Math.max(1, Number($('need').value) || 1),
+    bought: 0, photos: photoIds
+  });
+  await persist();
+  $('name').value = ''; $('price').value = ''; $('need').value = 1;
+  pendingPhotos = []; renderPreviews(); render();
+};
+$('name').addEventListener('keydown', e => { if (e.key === 'Enter') $('addBtn').click(); });
+document.querySelectorAll('.tabs button').forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    filter = b.dataset.filter; render();
+  };
+});
+
+/* ================= индикатор сети ================= */
+function updateNet() {
+  const b = $('netBadge');
+  if (navigator.onLine) { b.textContent = '🌐 Онлайн'; b.classList.add('online'); }
+  else { b.textContent = '✈️ Офлайн'; b.classList.remove('online'); }
+  updateUsage();
+}
+window.addEventListener('online', updateNet);
+window.addEventListener('offline', updateNet);
+
+/* ================= PWA: установка ================= */
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  $('installBtn').style.display = 'inline-block';
+});
+$('installBtn').onclick = async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+  $('installBtn').style.display = 'none';
+};
+
+/* ================= запуск ================= */
+(async function init() {
+  await openIDB();
+  try {
+    const saved = JSON.parse(localStorage.getItem('shopping_items') || '[]');
+    if (Array.isArray(saved)) items = saved;
+  } catch (e) {}
+
+  if (useFirebase && docRef) {
+    try {
+      const { onSnapshot, setDoc } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+      onSnapshot(docRef, snap => {
+        if (snap.exists() && Array.isArray(snap.data().items)) {
+          items = snap.data().items;
+          render();
+        } else {
+          setDoc(docRef, { items });
+        }
+      }, err => console.warn('snapshot error', err));
+    } catch (e) { console.warn('Firebase listen error', e); }
+  }
+
+  if (navigator.storage && navigator.storage.persist) {
+    try { await navigator.storage.persist(); } catch (e) {}
+  }
+
+  // Регистрация Service Worker (только на https или localhost)
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      console.log('SW зарегистрирован:', reg.scope);
+    } catch (e) { console.warn('SW ошибка:', e); }
+  } else {
+    console.log('Service Worker недоступен (нужен https или localhost). Файл открыт как file:// — офлайн-режим PWA не активируется.');
+  }
+
+  updateNet();
+  renderPreviews();
+  render();
+})();
+</script>
+</body>
+</html>
